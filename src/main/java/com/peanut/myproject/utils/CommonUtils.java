@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Calendar;
 import java.util.Random;
 import java.util.UUID;
 
@@ -51,6 +52,24 @@ public class CommonUtils {
                 result.append(str);
             }
             return result.toString();
+    }
+
+    public static long getRandomDigital(long range){
+        double random = Math.random() * range;
+//        System.out.println(random);
+        long randomLong = (long) random;
+//        System.out.println(randomLong);
+        return randomLong;
+    }
+
+    public static long getRandomTime(long subTime){
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(2010,Calendar.JANUARY,1);
+//        System.out.println(calendar.getTime());
+        long timeInMillis = calendar.getTimeInMillis() + subTime;
+        calendar.setTimeInMillis(timeInMillis);
+//        System.out.println(calendar.getTime());
+        return timeInMillis;
     }
 
     public static void main(String[] args) {

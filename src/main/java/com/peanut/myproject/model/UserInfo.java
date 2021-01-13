@@ -23,6 +23,8 @@ public class UserInfo implements Serializable {
     private boolean isGraduated;
     private String school;
     private String company;
+    private long createTime;
+    private long updateTime;
     private WorkExperience workExperience;
 
     public String getId() {
@@ -87,6 +89,22 @@ public class UserInfo implements Serializable {
 
     public void setIsMarried(boolean isMarried) {
         this.isMarried = isMarried;
+    }
+
+    public long getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(long createTime) {
+        this.createTime = createTime;
+    }
+
+    public long getUpdateTime() {
+        return updateTime;
+    }
+
+    public void setUpdateTime(long updateTime) {
+        this.updateTime = updateTime;
     }
 
     public boolean getIsGraduated() {
