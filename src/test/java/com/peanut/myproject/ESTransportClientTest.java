@@ -10,15 +10,18 @@ import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
+import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequestBuilder;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.settings.Settings;
@@ -26,6 +29,7 @@ import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.get.GetResult;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.search.SearchHit;
@@ -40,6 +44,7 @@ import org.junit.Test;
 
 import javax.naming.directory.SearchResult;
 import java.net.InetAddress;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
@@ -111,14 +116,14 @@ public class ESTransportClientTest {
 
         try {
             //必须设置集群名称，否则会报错 oNodeAvailableException[None of the configured nodes are available
-            Settings settings = Settings.builder().put("cluster.name", "elasticsearch-cluster-5.5.3").build();
+            Settings settings = Settings.builder().put("cluster.name", "es-cluster-5.5.0").build();
 
             transportClient = new PreBuiltTransportClient(settings)
 //                    .addTransportAddress(new InetSocketTransportAddress(InetAddress.getLocalHost(),9201))
 //                    .addTransportAddress(new InetSocketTransportAddress(InetAddress.getLocalHost(),9202))
 //                    .addTransportAddress(new InetSocketTransportAddress(InetAddress.getLocalHost(),9203))
 //                    .addTransportAddress(new InetSocketTransportAddress(InetAddress.getLocalHost(),9204))
-                    .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("localhost"), 9305));
+                    .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("localhost"), 9301));
         } catch (Exception e) {
             System.out.println("ES连接客户端创建失败");
         }
@@ -138,12 +143,12 @@ public class ESTransportClientTest {
         }*/
         //设置索引的setting 创建索引并添加mapping
 
-        CreateIndexResponse createIndexResponse = transportClient.admin().indices().prepareCreate(INDEX_CUSTOMER)
+        CreateIndexResponse createIndexResponse = transportClient.admin().indices().prepareCreate("manager_test08")
                 .setSettings(Settings.builder()
                         //设置索引的分片数
-                        .put("index.number_of_shards", 5)
+                        .put("index.number_of_shards", 3)
                         //设置索引的副本数
-                        .put("index.number_of_replicas", 4))
+                        .put("index.number_of_replicas", 2))
                 .addMapping("customer", "{\n" +
                         "    \"customer\": {\n" +
                         "      \"properties\": {\n" +
@@ -183,8 +188,11 @@ public class ESTransportClientTest {
                         "        \"updateTime\": {\n" +
                         "          \"type\": \"date\"\n" +
                         "        },\n" +
+                        "        \"email\": {\n" +
+                        "          \"type\": \"keyword\"\n" +
+                        "        },\n" +
                         "        \"company\": {\n" +
-                        "          \"type\": \"object\"\n" +
+                        "          \"type\": \"keyword\"\n" +
                         "        },\n" +
                         "        \"workExperience.workYear\": {\n" +
                         "          \"type\": \"integer\"\n" +
@@ -220,7 +228,7 @@ public class ESTransportClientTest {
         //transportClient.admin().indices().prepareRefresh(INDEX_CUSTOMER , INDEX_CUSTOMER_INFO).get();
 
         //更新索引的设置
-        UpdateSettingsResponse updateSettingsResponse = transportClient
+        /*UpdateSettingsResponse updateSettingsResponse = transportClient
                 .admin()
                 .indices()
                 .prepareUpdateSettings(INDEX_CUSTOMER)
@@ -234,7 +242,7 @@ public class ESTransportClientTest {
             String index = indexToSetting.key;
             Settings settings = indexToSetting.value;
             System.out.println("索引：" + index + "，settings: " + settings.toString());
-        }
+        }*/
     }
 
     public HashMap<String, Object> getHashMap(String key, Object value) {
@@ -296,11 +304,11 @@ public class ESTransportClientTest {
 
     @Test
     public void bulkIndexDocumentText() {
-        for (int i = 0; i < 10000; i++) {
+        TransportClient transportClient = getESTransportClient();
+        for (int i = 0; i < 10; i++) {
             long startTime = System.currentTimeMillis();
-            TransportClient transportClient = getESTransportClient();
             BulkRequestBuilder bulkRequestBuilder = transportClient.prepareBulk();
-            for (int j = 90000000 + (i * 10000); j < 90000000 + ((i +1) * 10000); j++) {
+            for (int j = 100000  + (i * 10000); j < 100000  + ((i +1) * 10000); j++) {
                 UserInfo userInfo = new UserInfo();
                 userInfo.setId(String.valueOf(j));
                 userInfo.setName(nameArray[j % nameArray.length]);
@@ -314,6 +322,7 @@ public class ESTransportClientTest {
                 userInfo.setIsGraduated(Integer.parseInt(CommonUtils.getType()) > 5);
                 userInfo.setIsMarried(Integer.parseInt(CommonUtils.getType()) > 5);
                 userInfo.setPhone(phoneArray[j % placeArray.length]);
+                userInfo.setEmail("test" + i + "@163.com");
                 userInfo.setCreateTime(CommonUtils.getRandomTime(-CommonUtils.getRandomDigital(1000000000L)));
                 userInfo.setUpdateTime(CommonUtils.getRandomTime(CommonUtils.getRandomDigital(1000000000L)));
 
@@ -326,12 +335,14 @@ public class ESTransportClientTest {
 
                 userInfo.setWorkExperience(workExperience);
 
-                IndexRequestBuilder indexRequestBuilder = transportClient.prepareIndex(INDEX_CUSTOMER, INDEX_CUSTOMER).setSource(JSONObject.toJSONString(userInfo), XContentType.JSON);
+                IndexRequestBuilder indexRequestBuilder = transportClient.prepareIndex(INDEX_MANAGER, INDEX_MANAGER).setSource(JSONObject.toJSONString(userInfo), XContentType.JSON);
+                indexRequestBuilder.setId(String.valueOf(j));
                 bulkRequestBuilder.add(indexRequestBuilder);
             }
             BulkResponse bulkResponse = bulkRequestBuilder.get();
             if (bulkResponse.hasFailures()) {
-                System.out.println("批量索引文档失败!!!!!");
+                String message = bulkResponse.buildFailureMessage();
+                System.out.println("批量索引文档失败:" + message);
             }
             //1000 -> 7743 18000 -> 14411 100000 -> 20178  100000 -> 189292
             System.out.println("循环索引10000个文档个文档耗时：" + (System.currentTimeMillis() - startTime));
@@ -342,7 +353,10 @@ public class ESTransportClientTest {
     @Test
     public void deleteIndexTest() {
         TransportClient esTransportClient = getESTransportClient();
-        DeleteIndexResponse deleteIndexResponse = esTransportClient.admin().indices().prepareDelete(INDEX_MANAGER_INFO).get();
+        DeleteIndexResponse deleteIndexResponse = esTransportClient
+                .admin()
+                .indices()
+                .prepareDelete(".monitoring-es-6-2021.02.08").get();
         if (deleteIndexResponse.isAcknowledged()) {
             System.out.println("======索引删除成功======");
         } else {
@@ -354,8 +368,8 @@ public class ESTransportClientTest {
     public void searchTest() {
         TransportClient esTransportClient = getESTransportClient();
         SearchResponse searchResponse = esTransportClient.prepareSearch(INDEX_CUSTOMER)
-//                .addSort("id", SortOrder.DESC)
-                .setQuery(QueryBuilders.matchQuery("id", 51959))
+                .addSort("id", SortOrder.DESC)
+//                .setQuery(QueryBuilders.rangeQuery("createTime").lt(System.currentTimeMillis()))
 //                .setQuery(QueryBuilders.termQuery("name","John"))
 //                .setQuery(QueryBuilders.matchPhraseQuery("name","John"))
                 .setFrom(1)
@@ -390,6 +404,28 @@ public class ESTransportClientTest {
             String type = aggregation.getType();
             System.out.println("name : " + name + "type : " + type);
         }*/
+
+    }
+
+    @Test
+    public void getDocument(){
+        TransportClient transportClient = getESTransportClient();
+        GetResponse response = transportClient.prepareGet(INDEX_MANAGER, INDEX_MANAGER, "70001").get();
+        System.out.println(response.getSourceAsString());
+    }
+
+    @Test
+    public void updateDocumentById(){
+        TransportClient transportClient = getESTransportClient();
+        String updateDocument = "{\"address\":\"海南省海口市观海区北京路\",\"company\":\"京东\",\"createTime\":1261709773921,\"height\":1786.88,\"id\":\"70001\"," +
+                "\"isGraduated\":true,\"isMarried\":false,\"name\":\"ZhengHe Yang\",\"phone\":15927638923,\"school\":\"清华大学\",\"sex\":\"保密\"," +
+                "\"updateTime\":1263245489287,\"weight\":1992.18,\"workExperience\":{\"id\":\"AA10EF2ADF5144E2AACF0A52B31CD25F\",\"level\":6," +
+                "\"place\":\"北京\",\"salaryYear\":19.5,\"workYear\":1}}";
+        UpdateResponse response = transportClient.prepareUpdate(INDEX_MANAGER, INDEX_MANAGER, "70001").setDoc(updateDocument, XContentType.JSON).get();
+
+        GetResult getResult = response.getGetResult();
+
+//        System.out.println(getResult.toString());
 
     }
 

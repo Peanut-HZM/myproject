@@ -18,6 +18,7 @@ public class UserInfo implements Serializable {
     private double weight;
     private String address;
     private long phone;
+    private String email;
     private String sex;
     private boolean isMarried;
     private boolean isGraduated;
@@ -73,6 +74,14 @@ public class UserInfo implements Serializable {
 
     public void setPhone(long phone) {
         this.phone = phone;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getSex() {
